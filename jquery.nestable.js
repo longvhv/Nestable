@@ -1,6 +1,7 @@
 /*!
- * Nestable jQuery Plugin - Copyright (c) 2012 David Bushell - http://dbushell.com/
- * Dual-licensed under the BSD or MIT licenses
+ * Nestable jQuery Plugin - https://github.com/josephlimb/Nestable
+ * Copyright (c) 2015 Joseph Limb | The MIT License (MIT)
+ * Version 0.0.1
  */
 ;(function($, window, document, undefined)
 {
@@ -60,7 +61,7 @@
             var list = this;
 
             list.reset();
-
+			
             list.el.data('nestable-group', this.options.group);
 
             list.placeEl = $('<div class="' + list.options.placeClass + '"/>');
@@ -194,17 +195,52 @@
             this.dragDepth  = 0;
             this.hasNewRoot = false;
             this.pointEl    = null;
+			this.restoreStates();
         },
-
-        expandItem: function(li)
+		saveStates: function(){
+			var id = this.el.attr('id'), states = [];
+			if(id && window.localStorage)
+			{
+				$.each(this.el.find(this.options.itemNodeName), function(k, el) {
+					if($('>button:visible', el).data('action') == 'expand')
+					{
+						states.push($(el).data('id'));
+					}
+				});
+				localStorage.setItem("treeState"+id, JSON.stringify(states));
+			}
+		},
+		restoreStates: function(){
+			var id = this.el.attr('id');
+			if(id && window.localStorage)
+			{
+				var states = localStorage.getItem("treeState"+id);
+				if(states)
+				{
+					states = JSON.parse(states);
+					if(typeof(states) == 'object')
+					{
+						for(var i in states)
+						{
+							$('li[data-id="'+states[i]+'"]', this.el).addClass('dd-collapsed');
+						}
+					}
+				}
+			}
+		},
+        expandItem: function(li, dontSaveState)
         {
             li.removeClass(this.options.collapsedClass);
             li.children('[data-action="expand"]').hide();
             li.children('[data-action="collapse"]').show();
             li.children(this.options.listNodeName).show();
+			if(!dontSaveState)
+			{
+				this.saveStates();
+			}
         },
-
-        collapseItem: function(li)
+		
+        collapseItem: function(li, dontSaveState)
         {
             var lists = li.children(this.options.listNodeName);
             if (lists.length) {
@@ -213,22 +249,28 @@
                 li.children('[data-action="expand"]').show();
                 li.children(this.options.listNodeName).hide();
             }
+			if(!dontSaveState)
+			{
+				this.saveStates();
+			}
         },
 
         expandAll: function()
         {
             var list = this;
             list.el.find(list.options.itemNodeName).each(function() {
-                list.expandItem($(this));
+                list.expandItem($(this), true);
             });
+			this.saveStates();
         },
 
         collapseAll: function()
         {
             var list = this;
             list.el.find(list.options.itemNodeName).each(function() {
-                list.collapseItem($(this));
+                list.collapseItem($(this), true);
             });
+			this.saveStates();
         },
 
         setParent: function(li)
@@ -237,7 +279,7 @@
                 li.prepend($(this.options.expandBtnHTML));
                 li.prepend($(this.options.collapseBtnHTML));
             }
-            li.children('[data-action="expand"]').hide();
+            li.children('[data-action="'+(li.hasClass(this.options.collapsedClass)?'collapse':'expand')+'"]').hide();
         },
 
         unsetParent: function(li)
